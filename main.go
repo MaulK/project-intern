@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"net/smtp"
 	"project-intern/config"
 	"project-intern/controller"
 	"project-intern/middleware"
@@ -15,13 +13,15 @@ import (
 )
 
 var (
-	db             *gorm.DB                  = config.SetupDatabaseConnection()
-	userRepository repository.UserRepository = repository.NewUserRepository(db)
-	jwtService     service.JWTService        = service.NewJWTService()
-	userService    service.UserService       = service.NewUserService(userRepository)
-	authService    service.AuthService       = service.NewAuthService(userRepository)
-	authController controller.AuthController = controller.NewAuthController(authService, jwtService)
-	userController controller.UserController = controller.NewUserController(userService, jwtService)
+	db              *gorm.DB                          = config.SetupDatabaseConnection()
+	userRepository  repository.UserRepository         = repository.NewUserRepository(db)
+	verifRepository repository.VerificationRepository = repository.NewVerifRepository(db)
+	jwtService      service.JWTService                = service.NewJWTService()
+	userService     service.UserService               = service.NewUserService(userRepository)
+	authService     service.AuthService               = service.NewAuthService(userRepository)
+	verifService    service.VerificationService       = service.NewVerifService(verifRepository)
+	authController  controller.AuthController         = controller.NewAuthController(authService, jwtService, verifService)
+	userController  controller.UserController         = controller.NewUserController(userService, jwtService)
 )
 
 func main() {
@@ -34,6 +34,7 @@ func main() {
 	authRoutes := r.Group("api/auth")
 	{
 		authRoutes.POST("/login", authController.Login)
+		authRoutes.POST("/verification", authController.Verification)
 		authRoutes.POST("/register", authController.Register)
 	}
 
@@ -42,33 +43,6 @@ func main() {
 		userRoutes.GET("/profile", userController.Profile)
 		userRoutes.PUT("/profile", userController.Update)
 	}
-
-	// Sender data.
-	from := "testmailintern1@gmail.com"
-	password := "TestIntern123"
-
-	// Receiver email address.
-	to := []string{
-		"maulanaakbar772@gmail.com",
-	}
-
-	// smtp server configuration.
-	smtpHost := "smtp.gmail.com"
-	smtpPort := "587"
-
-	// Message.
-	message := []byte("Berikut kode untuk verifikasi")
-
-	// Authentication.
-	auth := smtp.PlainAuth("", from, password, smtpHost)
-
-	// Sending email.
-	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, message)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println("Email Sent Successfully!")
 
 	r.Run()
 
